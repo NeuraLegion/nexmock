@@ -52,18 +52,6 @@ const bodyTranspile = (body, contentType) => {
 
 module.exports.bodyTranspile = bodyTranspile;
 
-const arrayBufferToBase64 = buffer => {
-	const bytes = new Uint8Array(buffer);
-
-	let binary = '';
-
-	for (let i = 0; i < bytes.byteLength; i++) {
-		binary += String.fromCharCode(bytes[i]);
-	}
-
-	return window.btoa(binary).replace(/^data:.+\/.+;base64,/, '');
-};
-
 const bufferToBase64 = buffer => buffer.toString('base64');
 
 const jsonTranspile = async body => ({
@@ -89,7 +77,7 @@ const blobTranspile = body =>
 		const reader = new FileReader();
 		reader.addEventListener('loadend', () =>
 			resolve({
-				body: reader.result,
+				body: dataUrlToBase64(reader.result),
 				mimeType: body.type,
 				fileName: body.name,
 				type: MockBodyType.file
@@ -173,3 +161,17 @@ const isFormUrlEncoded = (body, contentType) =>
 	body instanceof URLSearchParams ||
 	(typeof body === 'string' &&
 		contentType === 'application/x-www-form-urlencoded');
+
+const arrayBufferToBase64 = buffer => {
+	const bytes = new Uint8Array(buffer);
+
+	let binary = '';
+
+	for (let i = 0; i < bytes.byteLength; i++) {
+		binary += String.fromCharCode(bytes[i]);
+	}
+
+	return dataUrlToBase64(window.btoa(binary));
+};
+
+const dataUrlToBase64 = dataUrl => dataUrl.replace(/^data:.+\/.+;base64,/, '');
