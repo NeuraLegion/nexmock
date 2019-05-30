@@ -55,7 +55,7 @@ module.exports.bodyTranspile = bodyTranspile;
 const bufferToBase64 = buffer => buffer.toString('base64');
 
 const jsonTranspile = async body => ({
-	body: typeof body === 'string' ? JSON.parse(body) : body,
+	body: typeof body === 'string' ? body : JSON.stringify(body),
 	type: MockBodyType.json
 });
 
