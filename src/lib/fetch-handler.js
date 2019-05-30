@@ -1,6 +1,9 @@
 const responseBuilder = require('./response-builder');
 const requestUtils = require('./request-utils');
+const { bodyTranspile } = require('./body-transpiler');
 const FetchMock = {};
+
+FetchMock._mockfile = [];
 
 const resolve = async (response, url, options, request) => {
 	// We want to allow things like
@@ -13,7 +16,7 @@ const resolve = async (response, url, options, request) => {
 	while (
 		typeof response === 'function' ||
 		typeof response.then === 'function'
-	) {
+		) {
 		if (typeof response === 'function') {
 			response = response(url, options, request);
 		} else {
@@ -24,11 +27,24 @@ const resolve = async (response, url, options, request) => {
 };
 
 FetchMock.fetchHandler = function(url, options, request) {
-	({ url, options, request } = requestUtils.normalizeRequest(
+	({ url, options = {}, request } = requestUtils.normalizeRequest(
 		url,
 		options,
 		this.config.Request
 	));
+
+	const contentType = options.headers
+		? options.headers['Content-Type'] || options.headers['content-type']
+		: null;
+
+	bodyTranspile(options.body, contentType).then(body =>
+		this._mockfile.push(
+			Object.assign(
+				{ url: url, method: options.method || 'GET', headers: options.headers },
+				body
+			)
+		)
+	);
 
 	const route = this.executeRouter(url, options, request);
 
@@ -83,7 +99,7 @@ FetchMock.executeRouter = function(url, options, request) {
 		throw new Error(
 			`fetch-mock: No fallback response defined for ${(options &&
 				options.method) ||
-				'GET'} to ${url}`
+			'GET'} to ${url}`
 		);
 	}
 
