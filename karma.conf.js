@@ -33,5 +33,8 @@ module.exports = karma =>
 				]
 			}
 		},
-		reporters: ['mocha']
+		reporters: ['mocha', 'nexmock'],
+		nexmock: {
+			path: '.nexmock'
+		}
 	});
