@@ -3,8 +3,6 @@ const requestUtils = require('./request-utils');
 const { bodyTranspile } = require('./body-transpiler');
 const FetchMock = {};
 
-FetchMock._mockfile = [];
-
 const resolve = async (response, url, options, request) => {
 	// We want to allow things like
 	// - function returning a Promise for a response
@@ -37,14 +35,12 @@ FetchMock.fetchHandler = function(url, options, request) {
 		? options.headers['Content-Type'] || options.headers['content-type']
 		: null;
 
-	bodyTranspile(options.body, contentType).then(body =>
-		this._mockfile.push(
-			Object.assign(
-				{ url: url, method: options.method || 'GET', headers: options.headers },
-				body
-			)
+	bodyTranspile(options.body, contentType)
+		.then(body =>
+			this._createMockRequest(url, options.method, options.headers, body)
 		)
-	);
+		.then(this._pushMockRequest.bind(this))
+		.catch(err => console.error(err));
 
 	const route = this.executeRouter(url, options, request);
 
@@ -70,6 +66,22 @@ FetchMock.fetchHandler = function(url, options, request) {
 			.then(res, rej)
 			.then(done, done);
 	});
+};
+
+FetchMock._pushMockRequest = function(request) {
+	if (this.global && this.global.__karma__) {
+		this.global.__karma__.info(
+			Object.assign({ event: '@@mockrequest' }, request)
+		);
+	} else if (this.global) {
+		this.global['@@mockrequests'] = Array.isArray(this.global['@@mockrequests'])
+			? [...this.global['@@mockrequests'], request]
+			: [request];
+	}
+};
+
+FetchMock._createMockRequest = function(url, method = 'GET', headers, body) {
+	return { url, method, headers, body };
 };
 
 FetchMock.fetchHandler.isMock = true;
