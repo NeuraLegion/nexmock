@@ -39,12 +39,8 @@ const bodyTranspile = (body, contentType) => {
 		return fromUrlencodedTranspile(body);
 	}
 
-	if (isArrayBuffer(body)) {
-		return arrayBufferTranspile(body);
-	}
-
 	if (isTypeArray(body)) {
-		return typedArrayTranspile(body);
+		return arrayBufferTranspile(body);
 	}
 
 	return textTranspile(body);
@@ -110,11 +106,6 @@ const arrayBufferTranspile = async body => ({
 	type: MockBodyType.buffer
 });
 
-const typedArrayTranspile = async body => ({
-	body: arrayBufferToBase64(body.buffer),
-	type: MockBodyType.buffer
-});
-
 const textTranspile = async body => ({ body, type: MockBodyType.text });
 
 const zipEntries = entries =>
@@ -134,17 +125,16 @@ const isJson = (body, contentType) =>
 	contentType === 'application/json';
 
 const isFormData = (body, contentType) =>
-	((env.isNode && typeof body === 'object') ||
-		(env.isBrowser && body instanceof FormData)) &&
-	contentType === 'multipart/form-data';
+	(env.isNode &&
+		typeof body === 'object' &&
+		contentType === 'multipart/form-data') ||
+	(env.isBrowser && body instanceof FormData);
 
 const isFile = body => env.isBrowser && body instanceof Blob;
 
 const isBuffer = body => env.isNode && body instanceof Buffer;
 
 const isStream = body => env.isNode && body instanceof require('stream').Stream;
-
-const isArrayBuffer = body => body instanceof ArrayBuffer;
 
 const isTypeArray = body =>
 	body instanceof Int8Array ||
@@ -155,23 +145,14 @@ const isTypeArray = body =>
 	body instanceof Int32Array ||
 	body instanceof Uint32Array ||
 	body instanceof Float32Array ||
-	body instanceof Float64Array;
+	body instanceof Float64Array ||
+	body instanceof ArrayBuffer;
 
 const isFormUrlEncoded = (body, contentType) =>
 	body instanceof URLSearchParams ||
 	(typeof body === 'string' &&
 		contentType === 'application/x-www-form-urlencoded');
 
-const arrayBufferToBase64 = buffer => {
-	const bytes = new Uint8Array(buffer);
-
-	let binary = '';
-
-	for (let i = 0; i < bytes.byteLength; i++) {
-		binary += String.fromCharCode(bytes[i]);
-	}
-
-	return dataUrlToBase64(window.btoa(binary));
-};
+const arrayBufferToBase64 = buffer => btoa(String.fromCharCode(...buffer));
 
 const dataUrlToBase64 = dataUrl => dataUrl.replace(/^data:.+\/.+;base64,/, '');
