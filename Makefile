@@ -12,7 +12,7 @@ test-firefox:
 	karma start --single-run --browsers=Firefox
 
 test-unit:
-	mocha --reporter mocha-nexmock-reporter --reporter-options path=.nexmock test/server.js
+	mocha test/server.js
 
 test-node6: transpile
 	node test/node6.js
