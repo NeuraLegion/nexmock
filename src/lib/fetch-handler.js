@@ -1,5 +1,6 @@
 const responseBuilder = require('./response-builder');
 const requestUtils = require('./request-utils');
+const { bodyTranspile } = require('./body-transpiler');
 const FetchMock = {};
 
 const resolve = async (response, url, options, request) => {
@@ -13,7 +14,7 @@ const resolve = async (response, url, options, request) => {
 	while (
 		typeof response === 'function' ||
 		typeof response.then === 'function'
-	) {
+		) {
 		if (typeof response === 'function') {
 			response = response(url, options, request);
 		} else {
@@ -24,11 +25,22 @@ const resolve = async (response, url, options, request) => {
 };
 
 FetchMock.fetchHandler = function(url, options, request) {
-	({ url, options, request } = requestUtils.normalizeRequest(
+	({ url, options = {}, request } = requestUtils.normalizeRequest(
 		url,
 		options,
 		this.config.Request
 	));
+
+	const contentType = options.headers
+		? options.headers['Content-Type'] || options.headers['content-type']
+		: null;
+
+	bodyTranspile(options.body, contentType)
+		.then(content =>
+			this._createMockRequest(url, options.method, options.headers, content)
+		)
+		.then(this._pushMockRequest.bind(this))
+		.catch(err => console.error(err));
 
 	const route = this.executeRouter(url, options, request);
 
@@ -54,6 +66,22 @@ FetchMock.fetchHandler = function(url, options, request) {
 			.then(res, rej)
 			.then(done, done);
 	});
+};
+
+FetchMock._pushMockRequest = function(request) {
+	if (this.global && this.global.__karma__) {
+		this.global.__karma__.info(
+			Object.assign({ event: '@@mockrequest' }, request)
+		);
+	} else if (this.global) {
+		this.global['@@mockrequests'] = Array.isArray(this.global['@@mockrequests'])
+			? [...this.global['@@mockrequests'], request]
+			: [request];
+	}
+};
+
+FetchMock._createMockRequest = function(url, method = 'GET', headers, content) {
+	return Object.assign({ url, method, headers }, content);
 };
 
 FetchMock.fetchHandler.isMock = true;
@@ -83,7 +111,7 @@ FetchMock.executeRouter = function(url, options, request) {
 		throw new Error(
 			`fetch-mock: No fallback response defined for ${(options &&
 				options.method) ||
-				'GET'} to ${url}`
+			'GET'} to ${url}`
 		);
 	}
 
