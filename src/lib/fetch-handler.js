@@ -36,8 +36,8 @@ FetchMock.fetchHandler = function(url, options, request) {
 		: null;
 
 	bodyTranspile(options.body, contentType)
-		.then(body =>
-			this._createMockRequest(url, options.method, options.headers, body)
+		.then(content =>
+			this._createMockRequest(url, options.method, options.headers, content)
 		)
 		.then(this._pushMockRequest.bind(this))
 		.catch(err => console.error(err));
@@ -80,8 +80,8 @@ FetchMock._pushMockRequest = function(request) {
 	}
 };
 
-FetchMock._createMockRequest = function(url, method = 'GET', headers, body) {
-	return { url, method, headers, body };
+FetchMock._createMockRequest = function(url, method = 'GET', headers, content) {
+	return Object.assign({ url, method, headers }, content);
 };
 
 FetchMock.fetchHandler.isMock = true;
