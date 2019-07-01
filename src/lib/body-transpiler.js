@@ -1,6 +1,22 @@
-const env = require('browser-or-node');
+const {
+	isBuffer,
+	isFile,
+	isStream,
+	isTypedArray,
+	isJson,
+	isURLSearchParams,
+	isFormUrlencoded,
+	isJsonLike,
+	isFormData,
+	isFormDataLike,
+	dataUrlToBase64,
+	arrayBufferToBase64,
+	bufferToBase64,
+	zip,
+	isString
+} = require('../utils');
 
-const MockBodyType = {
+const MOCK_BODY_TYPE = Object.freeze({
 	buffer: 'buffer',
 	json: 'json',
 	multipart: 'multipart',
@@ -8,67 +24,64 @@ const MockBodyType = {
 	stream: 'stream',
 	form_urlencoded: 'form_urlencoded',
 	text: 'text'
-};
+});
 
-Object.freeze(MockBodyType);
+module.exports.MOCK_BODY_TYPE = MOCK_BODY_TYPE;
 
-module.exports.MockBodyType = MockBodyType;
-
-const bodyTranspile = (body, contentType) => {
-	if (isJson(body, contentType)) {
-		return jsonTranspile(body);
+const transpileValue = (body, contentType) => {
+	if (isFormDataLike(body, contentType) || isFormData(body)) {
+		return transpileFormData(body);
 	}
 
-	if (isFormData(body, contentType)) {
-		return formDataTranspile(body);
+	if (isFormUrlencoded(body, contentType) || isURLSearchParams(body)) {
+		return transpileFromUrlencoded(body);
 	}
 
 	if (isFile(body)) {
-		return blobTranspile(body);
-	}
-
-	if (isBuffer(body)) {
-		return bufferTranspile(body);
+		return transpileBlob(body);
 	}
 
 	if (isStream(body)) {
-		return streamTranspile(body);
+		return transpileStream(body);
 	}
 
-	if (isFormUrlEncoded(body, contentType)) {
-		return fromUrlencodedTranspile(body);
+	if (isBuffer(body)) {
+		return transpileBuffer(body);
 	}
 
-	if (isTypeArray(body)) {
-		return arrayBufferTranspile(body);
+	if (isTypedArray(body)) {
+		return transpileArrayBuffer(body);
 	}
 
-	return textTranspile(body);
+	if (isJsonLike(body, contentType) || isJson(body)) {
+		return transpileJson(body);
+	}
+
+	return transpileText(body);
 };
 
-module.exports.bodyTranspile = bodyTranspile;
+module.exports.transpileValue = transpileValue;
 
-const bufferToBase64 = buffer => buffer.toString('base64');
+const transpileListValues = async body =>
+	Promise.all(body.map(value => transpileValue(value)));
 
-const jsonTranspile = async body => ({
-	body: typeof body === 'string' ? body : JSON.stringify(body),
-	type: MockBodyType.json
+const isomorphicTranspile = (value, contentType) => {
+	return Array.isArray(value)
+		? transpileListValues(value)
+		: transpileValue(value, contentType);
+};
+
+const transpileJson = async body => ({
+	body: isString(body) ? body : JSON.stringify(body),
+	type: MOCK_BODY_TYPE.json
 });
 
-const formDataTranspile = async body => {
-	const transpiledFormDataEntries = await Promise.all(
-		[...body.entries()].map(async ([key, value]) => [
-			key,
-			await bodyTranspile(value)
-		])
-	);
-	return {
-		body: zipEntries(transpiledFormDataEntries),
-		type: MockBodyType.multipart
-	};
-};
+const transpileFormData = async body => ({
+	body: zip(await preTranspileEntries(body)),
+	type: MOCK_BODY_TYPE.multipart
+});
 
-const blobTranspile = body =>
+const transpileBlob = body =>
 	new Promise(resolve => {
 		const reader = new FileReader();
 		reader.addEventListener('loadend', () =>
@@ -76,83 +89,39 @@ const blobTranspile = body =>
 				body: dataUrlToBase64(reader.result),
 				mimeType: body.type,
 				fileName: body.name,
-				type: MockBodyType.file
+				type: MOCK_BODY_TYPE.file
 			})
 		);
 		reader.readAsDataURL(body);
 	});
 
-const bufferTranspile = async body => ({
+const transpileBuffer = async body => ({
 	body: bufferToBase64(body),
-	type: MockBodyType.buffer
+	type: MOCK_BODY_TYPE.buffer
 });
 
-const streamTranspile = body =>
-	new Promise(resolve => {
-		let acc = Buffer.from('');
-		body.on('data', chunk => (acc = Buffer.concat([acc, chunk])));
-		body.on('end', () =>
-			resolve({ body: bufferToBase64(acc), text: MockBodyType.stream })
-		);
-	});
-
-const fromUrlencodedTranspile = async body => ({
-	body: zipEntries([...new URLSearchParams(body).entries()]),
-	type: MockBodyType.form_urlencoded
+const transpileStream = async body => ({
+	body: bufferToBase64(Buffer.from('dummy file')),
+	fileName: body.name,
+	text: MOCK_BODY_TYPE.stream
 });
 
-const arrayBufferTranspile = async body => ({
+const transpileFromUrlencoded = async body => ({
+	body: zip([...new URLSearchParams(body).entries()]),
+	type: MOCK_BODY_TYPE.form_urlencoded
+});
+
+const transpileArrayBuffer = async body => ({
 	body: arrayBufferToBase64(body),
-	type: MockBodyType.buffer
+	type: MOCK_BODY_TYPE.buffer
 });
 
-const textTranspile = async body => ({ body, type: MockBodyType.text });
+const transpileText = async body => ({ body, type: MOCK_BODY_TYPE.text });
 
-const zipEntries = entries =>
-	entries.reduce((acc, [key, value]) => {
-		if (Array.isArray(acc[key])) {
-			acc[key] = [...acc[key], value];
-		} else if (!!acc[key]) {
-			acc[key] = [value];
-		} else {
-			acc[key] = value;
-		}
-		return acc;
-	}, {});
-
-const isJson = (body, contentType) =>
-	(typeof body === 'string' || typeof body === 'object') &&
-	contentType === 'application/json';
-
-const isFormData = (body, contentType) =>
-	(env.isNode &&
-		typeof body === 'object' &&
-		contentType === 'multipart/form-data') ||
-	(env.isBrowser && body instanceof FormData);
-
-const isFile = body => env.isBrowser && body instanceof Blob;
-
-const isBuffer = body => env.isNode && body instanceof Buffer;
-
-const isStream = body => env.isNode && body instanceof require('stream').Stream;
-
-const isTypeArray = body =>
-	body instanceof Int8Array ||
-	body instanceof Uint8Array ||
-	body instanceof Uint8ClampedArray ||
-	body instanceof Int16Array ||
-	body instanceof Uint16Array ||
-	body instanceof Int32Array ||
-	body instanceof Uint32Array ||
-	body instanceof Float32Array ||
-	body instanceof Float64Array ||
-	body instanceof ArrayBuffer;
-
-const isFormUrlEncoded = (body, contentType) =>
-	body instanceof URLSearchParams ||
-	(typeof body === 'string' &&
-		contentType === 'application/x-www-form-urlencoded');
-
-const arrayBufferToBase64 = buffer => btoa(String.fromCharCode(...buffer));
-
-const dataUrlToBase64 = dataUrl => dataUrl.replace(/^data:.+\/.+;base64,/, '');
+const preTranspileEntries = async body =>
+	Promise.all(
+		[...body.entries()].map(async ([key, value]) => [
+			key,
+			await isomorphicTranspile(value)
+		])
+	);

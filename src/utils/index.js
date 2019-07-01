@@ -1,0 +1,17 @@
+module.exports.isBuffer = require('./isBuffer');
+module.exports.isFile = require('./isBlob');
+module.exports.isStream = require('./isStream');
+module.exports.isTypedArray = require('./isTypedArray');
+module.exports.isJson = require('./isJson');
+module.exports.isURLSearchParams = require('./isURLSearchParams');
+module.exports.isFormUrlencoded = require('./isFormUrlencoded');
+module.exports.isJsonLike = require('./isJsonLike');
+module.exports.isFormData = require('./isFormData');
+module.exports.isFormDataLike = require('./isFormDataLike');
+module.exports.isString = require('./isString');
+module.exports.isObject = require('./isObject');
+module.exports.isFunction = require('./isFunction');
+module.exports.dataUrlToBase64 = require('./dataUrlToBase64');
+module.exports.bufferToBase64 = require('./bufferToBase64');
+module.exports.arrayBufferToBase64 = require('./arrayBufferToBase64');
+module.exports.zip = require('./zip');

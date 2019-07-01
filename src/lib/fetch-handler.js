@@ -1,6 +1,6 @@
 const responseBuilder = require('./response-builder');
 const requestUtils = require('./request-utils');
-const { bodyTranspile } = require('./body-transpiler');
+const { transpileValue } = require('./body-transpiler');
 const FetchMock = {};
 
 const resolve = async (response, url, options, request) => {
@@ -35,7 +35,7 @@ FetchMock.fetchHandler = function(url, options, request) {
 		? options.headers['Content-Type'] || options.headers['content-type']
 		: null;
 
-	bodyTranspile(options.body, contentType)
+	transpileValue(options.body, contentType)
 		.then(content =>
 			this._createMockRequest(url, options.method, options.headers, content)
 		)

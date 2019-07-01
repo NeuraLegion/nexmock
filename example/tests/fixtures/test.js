@@ -4,12 +4,17 @@ const { b64toBlob, pngInBase64 } = require('./image-utils');
 const { xml } = require('./file-utils');
 
 const test = async ({ url = '/', status = 200, reqInit } = {}) => {
-	fetchMock.mock(url, status);
-	const res = await fetch(url, reqInit);
-	expect(res.status).to.equal(status);
-	expect(fetchMock.called(url)).to.be.true;
-	fetchMock.restore();
-	return { res, fetch: fetchMock };
+	try {
+		fetchMock.mock(url, status);
+		const res = await fetch(url, reqInit);
+		expect(res.status).to.equal(status);
+		expect(fetchMock.called(url)).to.be.true;
+		return { res, fetch: fetchMock };
+	} catch (e) {
+		throw e;
+	} finally {
+		fetchMock.restore();
+	}
 };
 
 module.exports.test = test;
