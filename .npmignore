@@ -15,3 +15,5 @@ Gemfile.lock
 .prettierrc
 .codeclimate.yml
 package-lock.json
+.idea
+example

@@ -103,7 +103,7 @@ const transpileBuffer = async body => ({
 const transpileStream = async body => ({
 	body: bufferToBase64(Buffer.from('dummy file')),
 	fileName: body.name,
-	text: MOCK_BODY_TYPE.stream
+	type: MOCK_BODY_TYPE.stream
 });
 
 const transpileFromUrlencoded = async body => ({

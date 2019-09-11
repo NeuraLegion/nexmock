@@ -1,6 +1,6 @@
 {
   "name": "@neuralegion/nexmock",
-  "version": "1.1.0",
+  "version": "1.1.2",
   "description": "Mock http requests made using fetch (or isomorphic-fetch)",
   "main": "src/server.js",
   "browser": "es5/client.js",
@@ -58,8 +58,9 @@
     "node": ">=4.0.0"
   },
   "devDependencies": {
-    "@neuralegion/karma-nexmock-reporter": "^1.0.0",
-    "@neuralegion/mocha-nexmock-reporter": "^1.0.0",
+    "@neuralegion/form-data": "^2.5.2",
+    "@neuralegion/karma-nexmock-reporter": "^1.0.2",
+    "@neuralegion/mocha-nexmock-reporter": "^1.0.3",
     "babel-cli": "6.26.0",
     "babel-loader": "^7.1.5",
     "babel-plugin-transform-runtime": "^6.23.0",
