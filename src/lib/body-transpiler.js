@@ -28,12 +28,23 @@ const MOCK_BODY_TYPE = Object.freeze({
 
 module.exports.MOCK_BODY_TYPE = MOCK_BODY_TYPE;
 
-const transpileValue = (body, contentType) => {
-	if (isFormDataLike(body, contentType) || isFormData(body)) {
+const isComplexType = contentType =>
+	contentType &&
+	(contentType.startsWith('multipart/') ||
+		contentType === 'application/x-www-form-urlencoded');
+
+const transpileValue = (body, contentType, parentContentType) => {
+	if (
+		!isComplexType(parentContentType) &&
+		(isFormDataLike(body, contentType) || isFormData(body))
+	) {
 		return transpileFormData(body);
 	}
 
-	if (isFormUrlencoded(body, contentType) || isURLSearchParams(body)) {
+	if (
+		!isComplexType(parentContentType) &&
+		(isFormUrlencoded(body, contentType) || isURLSearchParams(body))
+	) {
 		return transpileFromUrlencoded(body);
 	}
 
@@ -53,7 +64,10 @@ const transpileValue = (body, contentType) => {
 		return transpileArrayBuffer(body);
 	}
 
-	if (isJsonLike(body, contentType) || isJson(body)) {
+	if (
+		!isComplexType(parentContentType) &&
+		(isJsonLike(body, contentType) || isJson(body))
+	) {
 		return transpileJson(body);
 	}
 
@@ -65,10 +79,10 @@ module.exports.transpileValue = transpileValue;
 const transpileListValues = async body =>
 	Promise.all(body.map(value => transpileValue(value)));
 
-const isomorphicTranspile = (value, contentType) => {
+const transpileMultiPartItem = value => {
 	return Array.isArray(value)
 		? transpileListValues(value)
-		: transpileValue(value, contentType);
+		: transpileValue(value, null, 'multipart/form-data');
 };
 
 const transpileJson = async body => ({
@@ -77,7 +91,7 @@ const transpileJson = async body => ({
 });
 
 const transpileFormData = async body => ({
-	body: zip(await preTranspileEntries(body)),
+	body: zip(await transpileMultiPartItems(body)),
 	type: MOCK_BODY_TYPE.multipart
 });
 
@@ -118,10 +132,10 @@ const transpileArrayBuffer = async body => ({
 
 const transpileText = async body => ({ body, type: MOCK_BODY_TYPE.text });
 
-const preTranspileEntries = async body =>
+const transpileMultiPartItems = async body =>
 	Promise.all(
 		[...body.entries()].map(async ([key, value]) => [
 			key,
-			await isomorphicTranspile(value)
+			await transpileMultiPartItem(value)
 		])
 	);
