@@ -1,6 +1,6 @@
 const isObject = require('./isObject');
 
 const isFormDataLike = (body, contentType) =>
-	isObject(body) && contentType === 'multipart/form-data';
+	isObject(body) && contentType && contentType.startsWith('multipart/');
 
 module.exports = isFormDataLike;
