@@ -1,5 +1,7 @@
 # nexmock
 
+**THIS REPO HAS BEEN DEPRECATED AND HAS BEEN ARCHIVED BY THE OWNER.**
+
 Mock http requests made using [fetch](https://developer.mozilla.org/en-US/docs/Web/API/WindowOrWorkerGlobalScope/fetch) based on [fetch-mock](https://github.com/wheresrhys/fetch-mock) 
 
 ![node version](https://img.shields.io/node/v/fetch-mock.svg?style=flat-square)
